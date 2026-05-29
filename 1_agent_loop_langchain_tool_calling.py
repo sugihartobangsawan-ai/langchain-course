@@ -69,10 +69,12 @@ def run_agent(question:str):
     for iteration in range(1,MAX_ITERATIONS+1):
         print(f"\n--Iteration {iteration}--")
 
+        ###-- THINKING PART --
+        # so llm receive system prompt, user question, previous tool results
         ai_message = llm_with_tools.invoke(messages)
 
+        ### -- THE ACTION PART --
         tool_calls = ai_message.tool_calls
-
         #if no tool calls, this is the final answer
         if not tool_calls:
             print(f"\n Final Answer: {ai_message.content}")
@@ -89,11 +91,14 @@ def run_agent(question:str):
         tool_to_use = tools_dict.get(tool_name)
         if tool_to_use is None:
             raise ValueError(f"Tool {tool_name} does not exist")
-        observation=tool_to_use.invoke(tool_args)
 
+        ## -- TOOL EXECUTION --
+        observation=tool_to_use.invoke(tool_args)
         print(f"[Tool Result] {observation}")
 
-        #so ai can remember the result of each iteration
+        # -- OBSERVATION --
+        #   feeding the tool result back to LLM memory
+        #   so ai can remember the result of each iteration
         messages.append(ai_message)
         messages.append(
             ToolMessage(content=str(observation), tool_call_id = tool_call_id)
