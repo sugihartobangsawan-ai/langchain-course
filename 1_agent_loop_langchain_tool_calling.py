@@ -7,6 +7,7 @@ from langchain.chat_models import init_chat_model
 
 from langchain.tools import tool
 from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 MAX_ITERATIONS = 10
 MODEL = "qwen3.5:4b"
@@ -40,7 +41,15 @@ def run_agent(question:str):
     tools = [get_product_price,apply_discount]
     tools_dict = {t.name: t for t in tools}
 
-    llm=init_chat_model(f"ollama:{MODEL}", temperature=0)
+    #using ollama
+    # llm=init_chat_model(f"ollama:{MODEL}", temperature=0)
+
+    #using gemini
+    llm=ChatGoogleGenerativeAI(
+        model = "gemini-2.5-flash",
+        temperature = 0
+    )
+
     llm_with_tools = llm.bind_tools(tools)
 
     print(f'Question: {question}')
