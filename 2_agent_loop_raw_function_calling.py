@@ -11,7 +11,6 @@ MODEL = "qwen3.5:4b"
 #import langsmith traceable func
 from langsmith import traceable
 
-
 @traceable(run_type='tool')
 def get_product_price(product: str) -> float:
     """ look up the price of a product in the catalog"""
@@ -101,7 +100,7 @@ def run_agent(question:str):
         "apply_discount":apply_discount,
     }
 
-
+    #Difference 4: bind_tools()
     # llm_with_tools = llm.bind_tools(tools)
 
     print(f'Question: {question}')
@@ -148,6 +147,7 @@ def run_agent(question:str):
 
         #process only the first tool call - force one tool per iteration
         tool_call = tool_calls[0]
+
         #difference 6: Attribute access (.function.name) instead of dict aceess (.get('name'))
         tool_name = tool_call.function.name
         tool_args = tool_call.function.arguments
