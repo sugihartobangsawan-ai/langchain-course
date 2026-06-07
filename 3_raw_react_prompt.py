@@ -9,7 +9,7 @@ import ollama
 from langsmith import traceable
 
 MAX_ITERATIONS = 10
-MODEL = "qwen3.5:4b"
+MODEL = "qwen3.5:9b"
 
 
 # --- Tools (LangChain @tool decorator) ---
@@ -78,8 +78,7 @@ Final Answer: the final answer to the original input question
 
 Begin!
 
-Question: {{question}}
-Thought:"""
+Question: {{question}}"""
 
 
 
@@ -114,12 +113,26 @@ def run_agent(question: str):
 
         # Stop token prevents the LLM from generating its own Observation —
         # we inject the real tool result instead.
+
+        # print("\n" + "=" * 80)
+        # print("FULL PROMPT:")
+        # print(full_prompt)
+        # print("=" * 80)
+
         response = ollama_chat_traced(
             model=MODEL,
             messages=[{"role": "user", "content": full_prompt}],
-            options={"stop": ["\nObservation"], "temperature": 0},
+            options={
+                "stop": ["Observation:"],
+                "temperature": 0,
+            },
         )
-        output = response.message.content
+
+
+        output = (
+                response.message.content
+                or getattr(response.message, "thinking", "")
+        )
         print(f"LLM Output:\n{output}")
 
         print(f"  [Parsing] Looking for Final Answer in LLM output...")
@@ -131,13 +144,30 @@ def run_agent(question: str):
             print(f"Final Answer: {final_answer}")
             return final_answer
 
+        # Extract Thought
+        thought_match = re.search(
+            r"Thought:(.*?)Action:",
+            output,
+            re.DOTALL
+        )
+
+        thought = thought_match.group(1).strip() if thought_match else ""
 
 
         # CHANGE 6: Parse tool calls from raw text with regex — fragile if LLM doesn't follow format.
         print(f"  [Parsing] Looking for Action and Action Input in LLM output...")
 
-        action_match = re.search(r"Action:\s*(.+)", output)
-        action_input_match = re.search(r"Action Input:\s*(.+)", output)
+        action_match = re.search(
+            r"Action:\s*(.*?)\n",
+            output,
+            re.DOTALL
+        )
+
+        action_input_match = re.search(
+            r"Action Input:\s*(.*?)$",
+            output,
+            re.DOTALL
+        )
 
         if not action_match or not action_input_match:
             print(
@@ -164,7 +194,13 @@ def run_agent(question: str):
         print(f"  [Tool Result] {observation}")
 
         # CHANGE 7: History is one growing string re-sent every iteration (replaces messages.append).
-        scratchpad += f"{output}\nObservation: {observation}\nThought:"
+        scratchpad += (
+            f"Thought: {thought}\n"
+            f"Action: {tool_name}\n"
+            f"Action Input: {tool_input_raw}\n"
+            f"Observation: {observation}\n"
+            f"Thought: "
+        )
 
 
     print("ERROR: Max iterations reached without a final answer")
